@@ -1,0 +1,21 @@
+menu "Open-Meteo Weather Configuration"
+config PLACE_NAME
+    string "Display place name (font supports Latin characters)"
+    default "Pidu, Chengdu"
+
+config LATITUDE
+    string "WGS84 latitude"
+    default "30.80993"
+    help
+        Default: Pitong, Pidu District, Chengdu. No API key is required.
+
+config LONGITUDE
+    string "WGS84 longitude"
+    default "103.88253"
+
+config WEATHER_TIMEZONE
+    string "Open-Meteo IANA timezone"
+    default "Asia/Shanghai"
+    help
+        Must match the local POSIX timezone in WT32-ETH01 Configuration.
+endmenu

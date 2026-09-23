@@ -1,17 +1,17 @@
 #include "epdpaint.h"
 
-unsigned char* image;
-int width;
-int height;
-int rotate;
+static unsigned char* image;
+static int width;
+static int height;
+static int rotate;
 
-void paint(unsigned char* image1, int width, int height)
+void paint(unsigned char* image1, int image_width, int image_height)
 {
     rotate = ROTATE_0;
     image = image1;
     /* 1 byte = 8 pixels, so the width should be the multiple of 8 */
-    width = width % 8 ? width + 8 - (width % 8) : width;
-    height = height;
+    width = image_width % 8 ? image_width + 8 - (image_width % 8) : image_width;
+    height = image_height;
 }
 
 /**

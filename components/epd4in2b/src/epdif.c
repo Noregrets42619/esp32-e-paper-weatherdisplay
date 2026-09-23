@@ -26,6 +26,9 @@
  */
 
 #include "epdif.h"
+#include <assert.h>
+
+spi_device_handle_t spi;
 #include "esp_log.h"
 
 void digital_write(gpio_num_t pin, int value)
@@ -42,7 +45,7 @@ int digital_read(gpio_num_t pin)
 
 void delay_ms(unsigned int delaytime)
 {
-    vTaskDelay(delaytime / portTICK_RATE_MS);
+    vTaskDelay(pdMS_TO_TICKS(delaytime) > 0 ? pdMS_TO_TICKS(delaytime) : 1);
 }
 
 void spi_transfer(unsigned char data)
@@ -98,7 +101,7 @@ int ifinit(void)
     };
 
     //Initialize the SPI bus
-    ret = spi_bus_initialize(HSPI_HOST, &buscfg, 0);
+    ret = spi_bus_initialize(SPI2_HOST, &buscfg, 0);
     switch (ret) {
     case ESP_ERR_INVALID_ARG:
         ESP_LOGE("EPDIF", "INVALID ARG");
@@ -125,7 +128,7 @@ int ifinit(void)
     };
 
     //Attach the EPD to the SPI bus
-    ret = spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
+    ret = spi_bus_add_device(SPI2_HOST, &devcfg, &spi);
     assert(ret == ESP_OK);
 
     return 0;

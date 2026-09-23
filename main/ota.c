@@ -1,24 +1,11 @@
 #include "ota.h"
 
-#include "esp_event_loop.h"
+#include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_system.h"
-#include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
 #include "freertos/task.h"
-#include "nvs_flash.h"
-#include <stdlib.h>
-#include <string.h>
-
-#include "lwip/apps/sntp.h"
-#include "lwip/dns.h"
-#include "lwip/err.h"
-#include "lwip/netdb.h"
-#include "lwip/sockets.h"
-#include "lwip/sys.h"
-
-#include "esp_tls.h"
+#include "sdkconfig.h"
 
 #include "esp_http_ota.h"
 
@@ -47,33 +34,33 @@ static esp_err_t _http_event_handler(esp_http_client_event_t* evt)
     case HTTP_EVENT_DISCONNECTED:
         ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
         break;
+    default:
+        break;
     }
     return ESP_OK;
 }
 
 void init_ota_button(void)
 {
-    gpio_config_t io_conf;
-    // disable interruptrs
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-
-    // bit mask of the pins, use GPIO4 here
-    io_conf.pin_bit_mask = (1ULL << GPIO_NUM_4);
-
-    // set as input mode
-    io_conf.mode = GPIO_MODE_INPUT;
-
-    // enable pull-up mode
-    io_conf.pull_up_en = 1;
-
-    // disable pull-down mode
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    gpio_config(&io_conf);
+#ifdef CONFIG_ENABLE_OTA_BUTTON
+    const gpio_config_t config = {
+        .pin_bit_mask = 1ULL << GPIO_NUM_39,
+        .mode = GPIO_MODE_INPUT,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&config));
+#endif
 }
 
 uint8_t check_if_ota_button_pressed(void)
 {
-    return (!gpio_get_level(GPIO_NUM_4));
+#ifdef CONFIG_ENABLE_OTA_BUTTON
+    return gpio_get_level(GPIO_NUM_39) == 0;
+#else
+    return 0;
+#endif
 }
 
 void ota_task(void* pvParameter)

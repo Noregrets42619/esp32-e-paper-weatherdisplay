@@ -25,3 +25,18 @@ config OTA_URL
     help
 	URL for getting the bin file over the air using http.
 endmenu
+menu "WT32-ETH01 Configuration"
+config ENABLE_OTA_BUTTON
+    bool "Enable OTA button on GPIO39 (external 10k pull-up required)"
+    default n
+    help
+        GPIO4 is now the e-paper CS pin. Connect an optional button between
+        GPIO39 and GND, with a 10k resistor from GPIO39 to 3V3.
+        GPIO39 is input-only and has no internal pull-up.
+
+config DISPLAY_TIMEZONE
+    string "POSIX timezone"
+    default "CST-8"
+    help
+        CST-8 is UTC+8 (China). Uses POSIX rather than IANA timezone syntax.
+endmenu

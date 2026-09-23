@@ -1,8 +1,4 @@
-# Edit following two lines to set component requirements (see docs)
-set(COMPONENT_REQUIRES )
-set(COMPONENT_PRIV_REQUIRES )
-
-set(COMPONENT_SRCS "main.c" "ota.c")
-set(COMPONENT_ADD_INCLUDEDIRS "")
-
-register_component()
+idf_component_register(SRCS "main.c" "ota.c"
+    INCLUDE_DIRS "."
+    REQUIRES weather epd4in2b esp_http_ota esp_wifi esp_event esp_netif
+             nvs_flash lwip esp_driver_gpio esp_system esp_hw_support)

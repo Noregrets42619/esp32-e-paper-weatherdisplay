@@ -1,4 +1,6 @@
 # esp32-e-paper-weatherdisplay
+
+> **WT32-ETH01 / ESP-IDF 5.5.4 本地适配版**：接线、VS Code 配置及编译步骤见 [WT32-ETH01 使用说明](README_WT32-ETH01.md)。现使用 Wi-Fi 和 Open-Meteo，默认地点为成都市郫都区，无需 API Key。下面保留的是上游说明，旧开发板接线和 `make` 命令不适用于当前适配版。
 [![Build Status](https://travis-ci.com/henri98/esp32-e-paper-weatherdisplay.svg?branch=master)](https://travis-ci.com/henri98/esp32-e-paper-weatherdisplay) ![](https://img.shields.io/github/stars/henri98/esp32-e-paper-weatherdisplay.svg) ![](https://img.shields.io/github/license/henri98/esp32-e-paper-weatherdisplay.svg)
 
 An ESP32 and 4.2" ePaper Display reads Dark Sky weather API and displays the weather using the [Espressif IoT Development Framework](https://github.com/espressif/esp-idf)

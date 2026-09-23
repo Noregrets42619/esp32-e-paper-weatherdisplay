@@ -1,0 +1,10 @@
+{
+    "idf.espIdfPathWin": "d:\\ESP\\espidf\\v5.5\\esp-idf",
+    "idf.toolsPathWin": "d:\\ESP\\espidf_tools",
+    "idf.pythonInstallPath": "d:\\ESP\\espidf_tools\\tools\\idf-python\\3.11.2\\python.exe",
+    "idf.customExtraVars": {
+        "IDF_TARGET": "esp32"
+    },
+    "idf.flashType": "UART",
+    "C_Cpp.intelliSenseEngine": "default"
+}

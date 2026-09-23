@@ -38,15 +38,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Pin definition
-#define MOSI_PIN GPIO_NUM_27
-#define CLK_PIN GPIO_NUM_26
-#define CS_PIN GPIO_NUM_25
+// WT32-ETH01: exposed pins, avoiding Ethernet and boot-strapping pins.
+#define MOSI_PIN GPIO_NUM_14
+#define CLK_PIN GPIO_NUM_17
+#define CS_PIN GPIO_NUM_4
 #define DC_PIN GPIO_NUM_33
 #define RST_PIN GPIO_NUM_32
 #define BUSY_PIN GPIO_NUM_35
 
-spi_device_handle_t spi;
+extern spi_device_handle_t spi;
 
 int ifinit(void);
 void digital_write(gpio_num_t pin, int value);

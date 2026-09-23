@@ -6,8 +6,8 @@ gpio_num_t dc_pin;
 gpio_num_t cs_pin;
 gpio_num_t busy_pin;
 
-unsigned int width;
-unsigned int height;
+static unsigned int width;
+static unsigned int height;
 
 int epd4in2b_init(void)
 {
