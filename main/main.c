@@ -29,8 +29,6 @@
 #include "ubuntu24.h"
 #endif
 
-#include "ota.h"
-
 #define COLORED 1
 #define UNCOLORED 0
 
@@ -283,47 +281,38 @@ void app_main(void)
     int deep_sleep_sec = 3 * 60 * 60;
 
     if (!initialise_wifi()) {
-        init_ota_button();
-
-        if (check_if_ota_button_pressed()) {
-            xTaskCreate(&ota_task, "ota_example_task", 1024 * 14, NULL, 5, NULL);
-            vTaskDelay(1200000 / portTICK_PERIOD_MS);
-            deinitialize_wifi();
+        // TLS needs a valid clock. Complete network work before stopping Wi-Fi.
+        update_time_using_ntp();
+        esp_err_t weather_err = get_current_weather();
+        deinitialize_wifi();
+        if (weather_err == ESP_OK) {
+            weather_to_display();
         } else {
+            ESP_LOGW(TAG, "Weather unavailable; keeping the previous e-paper image");
+        }
 
-            // TLS needs a valid clock. Complete network work before stopping Wi-Fi.
-            update_time_using_ntp();
-            esp_err_t weather_err = get_current_weather();
-            deinitialize_wifi();
-            if (weather_err == ESP_OK) {
-                weather_to_display();
-            } else {
-                ESP_LOGW(TAG, "Weather unavailable; keeping the previous e-paper image");
+        time_t now;
+        struct tm timeinfo = {0};
+
+        time(&now);
+        setenv("TZ", CONFIG_DISPLAY_TIMEZONE, 1);
+        tzset();
+        localtime_r(&now, &timeinfo);
+
+        int seconds_of_today_ahead = (timeinfo.tm_sec + (timeinfo.tm_min * 60) + (timeinfo.tm_hour * 60 * 60));
+
+        bool sleep_time_set = false;
+
+        for (size_t i = 0; i < (sizeof(update_times) / sizeof(update_times[0])); i++) {
+            if (seconds_of_today_ahead < (update_times[i] * 60)) {
+                deep_sleep_sec = (update_times[i] * 60) - seconds_of_today_ahead;
+                sleep_time_set = true;
+                break;
             }
+        }
 
-            time_t now;
-            struct tm timeinfo = {0};
-
-            time(&now);
-            setenv("TZ", CONFIG_DISPLAY_TIMEZONE, 1);
-            tzset();
-            localtime_r(&now, &timeinfo);
-
-            int seconds_of_today_ahead = (timeinfo.tm_sec + (timeinfo.tm_min * 60) + (timeinfo.tm_hour * 60 * 60));
-
-            bool sleep_time_set = false;
-
-            for (size_t i = 0; i < (sizeof(update_times) / sizeof(update_times[0])); i++) {
-                if (seconds_of_today_ahead < (update_times[i] * 60)) {
-                    deep_sleep_sec = (update_times[i] * 60) - seconds_of_today_ahead;
-                    sleep_time_set = true;
-                    break;
-                }
-            }
-
-            if (!sleep_time_set) {
-                deep_sleep_sec = (24 * 60 * 60 - seconds_of_today_ahead) + (update_times[0] * 60);
-            }
+        if (!sleep_time_set) {
+            deep_sleep_sec = (24 * 60 * 60 - seconds_of_today_ahead) + (update_times[0] * 60);
         }
     }
 

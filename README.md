@@ -6,9 +6,7 @@
 
 **首次烧录前，必须填写自己的 2.4GHz Wi-Fi 名称和密码。`myssid`、`mypassword` 是占位值。**
 
-![中文四色天气界面示例](docs/weather-ui-preview.png)
-
-上图由固件中的绘图代码生成，使用示例数据，不是实机照片或实时天气。G 型四色诊断图已实机显示成功；中文天气界面已编译并完成像素预览，实机效果待烧录确认。
+![中文四色天气界面](docs/weather-ui-preview.png)
 
 ## 硬件
 
@@ -17,9 +15,8 @@
 | 主控 | WT32-ETH01，ESP32，构建目标 `esp32`，工程按 4MB Flash 配置 |
 | 屏幕 | Waveshare **4.2inch e-Paper Module (G)**，400 × 300，黑白黄红四色 |
 | 联网 | ESP32 自带的 2.4GHz Wi-Fi；当前没有启用 RJ45 以太网 |
-| 烧录 | 3.3V 电平的 USB 转串口，连接板卡 UART0 |
+| 烧录 | USB 转 TTL，使用 3.3V 逻辑电平，连接板卡 UART0 |
 | 供电 | 稳定的 5V 或 3.3V 电源；板卡两个电源输入二选一，屏幕当前接 3V3 |
-| 可选按键 | OTA 按键接 GPIO39，需外接 10kΩ 上拉，默认关闭 |
 
 屏幕型号要看完整名称里的 **(G)**。普通 4.2 英寸黑白 V1/V2、(B) 三色屏和 G 型的协议不同，板上 `Rev2.2` 或 `V2` 标记不能替代完整型号。本驱动只用于 G 型。
 
@@ -109,13 +106,15 @@ idf.py -p COMx flash
 idf.py -p COMx monitor
 ```
 
-把 `COMx` 换成实际串口。USB 转串口 TX 接板卡烧录 RXD，RX 接烧录 TXD，GND 共地。没有自动下载电路时，将 IO0 接 GND 后复位进入下载模式；烧录完成后断开 IO0 与 GND，再复位运行。退出监视器用 `Ctrl+]`。
+把 `COMx` 换成实际串口。USB 转 TTL 的 TX 接板卡烧录 RXD，RX 接烧录 TXD，GND 共地。没有自动下载电路时，将 IO0 接 GND 后复位进入下载模式；烧录完成后断开 IO0 与 GND，再复位运行。退出监视器用 `Ctrl+]`。
 
-固件生成在 `build/e-paper-weatherdisplay.bin`。工程采用两个各 1.5MiB 的 OTA 应用分区，第一次使用或更换分区表时完整烧录 bootloader、分区表和应用。当前中文四色版本大小为 `0x106280` 字节，应用分区剩余 32%。
+固件生成在 `build/e-paper-weatherdisplay.bin`。第一次使用或更换分区表时，通过 `idf.py flash` 完整烧录 bootloader、分区表和应用。
 
 ## 运行与显示
 
 上电后依次连接 Wi-Fi、校时、请求天气、停止 Wi-Fi、刷新屏幕，最后进入深度睡眠。
+
+Wi-Fi 联网、天气获取、中文四色显示和定时休眠均已在实物上跑通。
 
 - 黄色用于太阳和月亮，红色用于预报最高温，黑色用于最低温与正文。
 - 当天最高降水概率达到 50% 时提示栏为红色，否则为黄色。
@@ -123,6 +122,12 @@ idf.py -p COMx monitor
 - Wi-Fi 连接失败后约 3 小时重试。刷新计划在 `main/main.c` 的 `update_times` 数组中。
 
 墨水屏没有背光，观察是否正常要看内容有没有变化。串口中的 `Image transfer` 是 SPI 发送图像耗时，`full refresh: ready HIGH after ... ms` 是屏幕刷新时等待 BUSY 的耗时。
+
+### 手动刷新
+
+使用一个常开、自复位的轻触按键，一端接板卡 **EN**，另一端接 **GND**。按下再松开，ESP32 复位，程序重新连接 Wi-Fi、获取天气并刷新屏幕；深度睡眠期间也可以这样操作。
+
+这里使用的是 EN 复位功能，不需要增加 GPIO 按键程序。IO0 保持正常运行状态，不要把刷新按键接到 IO0。
 
 ### 单屏诊断
 
@@ -143,8 +148,6 @@ idf.py build
 ```
 
 布局位于 `main/weather_ui.c`，四色绘图在 `main/color_canvas.c`。`tools/preview_weather_ui.py` 可用本机 GCC 和 ESP-IDF 源码生成像素预览，具体参数见脚本说明。
-
-OTA 按键默认关闭；需要启用时，将 GPIO39 外接 10kΩ 上拉至 3V3，按键接 GPIO39 与 GND，并配置自己的固件 URL。OTA 尚未实机验证。
 
 ## 记录与许可
 
