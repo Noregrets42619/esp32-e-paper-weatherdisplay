@@ -20,23 +20,23 @@ static bool field(const cJSON* object, const char* key, double min, double max, 
 static void describe(int code, bool day, char* summary, size_t summary_size,
                      char* icon, size_t icon_size)
 {
-    const char* text = "Unknown";
+    const char* text = "未知";
     const char* symbol = "unknown";
     switch (code) {
-    case 0: text = "Clear"; symbol = day ? "clear-day" : "clear-night"; break;
-    case 1: text = "Mainly clear"; symbol = day ? "clear-day" : "clear-night"; break;
-    case 2: text = "Partly cloudy"; symbol = day ? "partly-cloudy-day" : "partly-cloudy-night"; break;
-    case 3: text = "Overcast"; symbol = "cloudy"; break;
-    case 45: case 48: text = "Fog"; symbol = "fog"; break;
-    case 51: case 53: case 55: text = "Drizzle"; symbol = "rain"; break;
-    case 56: case 57: text = "Freezing drizzle"; symbol = "sleet"; break;
-    case 61: case 63: case 65: text = "Rain"; symbol = "rain"; break;
-    case 66: case 67: text = "Freezing rain"; symbol = "sleet"; break;
-    case 71: case 73: case 75: case 77: text = "Snow"; symbol = "snow"; break;
-    case 80: case 81: case 82: text = "Rain showers"; symbol = "rain"; break;
-    case 85: case 86: text = "Snow showers"; symbol = "snow"; break;
-    case 95: text = "Thunderstorm"; symbol = "rain"; break;
-    case 96: case 99: text = "Storm with hail"; symbol = "sleet"; break;
+    case 0: text = "晴"; symbol = day ? "clear-day" : "clear-night"; break;
+    case 1: text = "少云"; symbol = day ? "clear-day" : "clear-night"; break;
+    case 2: text = "多云"; symbol = day ? "partly-cloudy-day" : "partly-cloudy-night"; break;
+    case 3: text = "阴"; symbol = "cloudy"; break;
+    case 45: case 48: text = "雾"; symbol = "fog"; break;
+    case 51: case 53: case 55: text = "毛毛雨"; symbol = "rain"; break;
+    case 56: case 57: text = "冻毛毛雨"; symbol = "sleet"; break;
+    case 61: case 63: case 65: text = "雨"; symbol = "rain"; break;
+    case 66: case 67: text = "冻雨"; symbol = "sleet"; break;
+    case 71: case 73: case 75: case 77: text = "雪"; symbol = "snow"; break;
+    case 80: case 81: case 82: text = "阵雨"; symbol = "rain"; break;
+    case 85: case 86: text = "阵雪"; symbol = "snow"; break;
+    case 95: text = "雷暴"; symbol = "thunderstorm"; break;
+    case 96: case 99: text = "雷暴冰雹"; symbol = "hail"; break;
     }
     snprintf(summary, summary_size, "%s", text);
     snprintf(icon, icon_size, "%s", symbol);
@@ -122,8 +122,8 @@ done:
 
 const char* deg_to_compass(int degrees)
 {
-    const char* directions[] = {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-                                "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
+    const char* directions[] = {"北", "北东北", "东北", "东东北", "东", "东东南", "东南", "南东南",
+                                "南", "南西南", "西南", "西西南", "西", "西西北", "西北", "北西北"};
     int sector = (int)floor(degrees / 22.5 + 0.5);
     return directions[(sector % 16 + 16) % 16];
 }

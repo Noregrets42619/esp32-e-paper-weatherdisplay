@@ -1,191 +1,155 @@
-# WT32-ETH01 墨水屏天气显示器
+# WT32-ETH01 四色墨水屏天气显示器
 
-使用 **WT32-ETH01 + SPI 墨水屏**显示当前天气和七天预报，通过 **2.4GHz Wi-Fi** 连接 [Open-Meteo](https://open-meteo.com/) 获取天气数据。
-
-> **首次使用前，请务必填写你自己的 Wi-Fi 名称和密码。** 仓库不包含可直接使用的网络凭据，默认的 `myssid` / `mypassword` 只是占位内容。
+用 WT32-ETH01 驱动 Waveshare 4.2inch e-Paper Module (G)，通过 Wi-Fi 获取成都市郫都区的天气，显示当前温度和七天预报。界面使用中文，颜色为黑、白、黄、红。
 
 原工程：[henri98/esp32-e-paper-weatherdisplay](https://github.com/henri98/esp32-e-paper-weatherdisplay)。
 
-## 功能与当前状态
+**首次烧录前，必须填写自己的 2.4GHz Wi-Fi 名称和密码。`myssid`、`mypassword` 是占位值。**
 
-- 显示温度、相对湿度、海平面气压、风速和风向。
-- 显示七天最高温、最低温及天气图标。
-- 区分晴天的白天与夜间图标；显示当天最大小时降水概率。
-- 天气请求失败时保留原画面，完成刷新后进入深度睡眠。
-- 默认地点为**四川省成都市郫都区**，使用北京时间，可自行修改。
-- 已接入 Open-Meteo；个人非商业用途无需注册账号或申请 API Key。
+![中文四色天气界面示例](docs/weather-ui-preview.png)
 
-目前采用 Wi-Fi 联网，**尚未实现 RJ45 有线联网**。已通过 ESP-IDF 5.5.4 环境编译，并在电脑上验证天气接口响应；屏幕显示、板卡联网和 OTA 仍需实机验证。
+上图由固件中的绘图代码生成，使用示例数据，不是实机照片或实时天气。G 型四色诊断图已实机显示成功；中文天气界面已编译并完成像素预览，实机效果待烧录确认。
 
-## 硬件准备
+## 硬件
 
-| 硬件 | 要求 |
+| 部件 | 本项目使用的型号与配置 |
 | --- | --- |
-| 主控板 | WT32-ETH01，项目目标为 `esp32`，默认按 4MB Flash 配置 |
-| 墨水屏 | 与项目 `epd4in2b` 驱动兼容的 SPI 屏，分辨率 400 × 300 |
-| USB 转串口模块 | 支持 3.3V UART 电平，用于烧录和查看日志 |
-| 电源、连接线 | 稳定供电并共地 |
-| OTA 按键 | 可选；启用时还需一个 10kΩ 上拉电阻 |
+| 主控 | WT32-ETH01，ESP32，构建目标 `esp32`，工程按 4MB Flash 配置 |
+| 屏幕 | Waveshare **4.2inch e-Paper Module (G)**，400 × 300，黑白黄红四色 |
+| 联网 | ESP32 自带的 2.4GHz Wi-Fi；当前没有启用 RJ45 以太网 |
+| 烧录 | 3.3V 电平的 USB 转串口，连接板卡 UART0 |
+| 供电 | 稳定的 5V 或 3.3V 电源；板卡两个电源输入二选一，屏幕当前接 3V3 |
+| 可选按键 | OTA 按键接 GPIO39，需外接 10kΩ 上拉，默认关闭 |
 
-屏幕驱动沿用 4.2 英寸墨水屏方案。**相同尺寸不代表驱动兼容**，不同颜色版本、控制芯片和硬件版本需要核对，不能保证所有 4.2 英寸屏都能直接使用。
+屏幕型号要看完整名称里的 **(G)**。普通 4.2 英寸黑白 V1/V2、(B) 三色屏和 G 型的协议不同，板上 `Rev2.2` 或 `V2` 标记不能替代完整型号。本驱动只用于 G 型。
 
-板卡资料：[功能与引脚说明](https://wiki.wireless-tag.com/docs/zh/WT32-ETH01/board_features.html) · [规格书与原理图](https://wiki.wireless-tag.com/docs/zh/WT32-ETH01/board_resources.html)
+板卡说明：[WT32-ETH01 功能与引脚](https://wiki.wireless-tag.com/docs/zh/WT32-ETH01/board_features.html)。屏幕驱动参考 [Waveshare 官方 G 型 ESP32 示例](https://github.com/waveshareteam/e-Paper/blob/master/E-paper_Separate_Program/4in2_e-Paper_G/ESP32/EPD_4in2g.cpp)。
 
-### 墨水屏接线
+### 屏幕接线
 
-| 墨水屏信号 | WT32-ETH01 | 说明 |
+| 屏幕信号 | GPIO | WT32-ETH01 板上位置 |
 | --- | --- | --- |
-| DIN / MOSI | GPIO14 | IO14 |
-| CLK / SCK | GPIO17 | 扩展接口 TXD / TX2 |
-| CS | GPIO4 | IO4 |
-| DC | GPIO33 | 485_EN |
-| RST | GPIO32 | CFG |
-| BUSY | GPIO35 | IO35，只作输入 |
-| VCC | 3V3 | 屏幕模块 3.3V 供电 |
-| GND | GND | 共地 |
+| DIN / MOSI | 14 | IO14 |
+| CLK / SCK | 17 | 扩展接口 TXD / TX2 |
+| CS | 4 | IO4 |
+| DC | 33 | 485_EN |
+| RST | 32 | CFG |
+| BUSY | 35 | IO35，仅输入 |
+| VCC | — | 3V3 |
+| GND | — | GND，共地 |
 
-注意接线时区分以下两点：
+GPIO17 是扩展接口的 TX2，**不是烧录 UART0 的 TXD**。引脚定义位于 [`epdif.h`](components/epd4in2b/include/epdif.h)。
 
-- **GPIO17 是扩展接口的 TX2，不是用于烧录的 UART0 TXD。** 它接有板载串口指示灯，用作屏幕时钟时指示灯可能闪烁。
-- 板卡自身的 **5V 与 3V3 供电输入二选一**，不要同时从两个输入端供电。
+当前使用 SPI2、Mode 0、100kHz。G 型 BUSY **低电平忙、高电平就绪**，图像为每像素 2 位，整帧 30000 字节。组件目录沿用原工程的 `epd4in2b` 名称，实际驱动是 [`epd4in2g.c`](components/epd4in2b/src/epd4in2g.c)。
 
-需要调整屏幕引脚时，修改 [`components/epd4in2b/include/epdif.h`](components/epd4in2b/include/epdif.h)。
+## 天气 API
 
-## 开发环境
+使用 [Open-Meteo Forecast API](https://open-meteo.com/en/docs)，请求地址为 `https://api.open-meteo.com/v1/forecast`。个人非商业用途使用公开免费接口，**无需注册账号，也不需要 API Key**；商业使用和调用限额见 [官方服务方案](https://open-meteo.com/en/pricing)。
 
-本项目使用 **ESP-IDF 5.5 系列**，已验证的源码版本为 `v5.5.4-299-ge46782886f`，编译目标是 `esp32`。
+默认地点为成都市郫都区郫筒一带，WGS84 坐标为 **30.80993°N、103.88253°E**。地点名称只控制屏幕文字，实际查询位置由经纬度决定。
 
-可以使用 ESP-IDF 命令行环境，或 VS Code 的 Espressif IDF 扩展。仓库中的 `.vscode` 配置保留了开发机的 Windows 安装路径，**其他电脑使用前要改成自己的路径**：
+| 请求参数 | 内容 |
+| --- | --- |
+| `current` | `temperature_2m`、`relative_humidity_2m`、`pressure_msl`、`wind_speed_10m`、`wind_direction_10m`、`weather_code`、`is_day` |
+| `daily` | `weather_code`、`temperature_2m_max`、`temperature_2m_min`、`precipitation_probability_max` |
+| `forecast_days` | `7` |
+| `timezone` | `Asia/Shanghai` |
+| `timeformat` | `unixtime` |
+| `temperature_unit` | `celsius` |
+| `wind_speed_unit` | `ms`，绘图时换算成 km/h |
 
-- `.vscode/settings.json`：IDF 目录、工具目录和 Python 路径。
-- `.vscode/c_cpp_properties.json`：ESP32 GCC 路径及对应工具链版本。
+接口返回模型计算的当前天气与预报，不是开发板上温湿度传感器的读数，见 [Open-Meteo 当前天气说明](https://open-meteo.com/en/docs#current)。
 
-用 VS Code 打开本项目目录，在命令面板中运行 `ESP-IDF: Open ESP-IDF Terminal`。后续命令都在项目根目录、已激活的 IDF 环境下执行。
+“今日最高降水概率”取当天的 `precipitation_probability_max`，不是此刻的降水概率，也不是降水量；缺失时显示“暂无数据”。Unix 时间经 `CST-8` 转为北京时间，顶部“数据更新”使用接口返回的当前天气时间。
 
-## 快速开始
+网络部分先通过 NTP 校时，再使用 HTTPS 请求天气，证书校验使用 ESP-IDF CA 证书包。请求失败或关键字段不完整时保留旧画面。
 
-### 1. 下载项目并选择芯片
+## 编译与烧录
+
+工程使用 **ESP-IDF 5.5 系列**，本机验证版本为 `v5.5.4-299-ge46782886f`。VS Code 中用 Espressif IDF 扩展打开工程，并运行 `ESP-IDF: Open ESP-IDF Terminal`。
 
 ```sh
 git clone https://github.com/Noregrets42619/esp32-e-paper-weatherdisplay.git
 cd esp32-e-paper-weatherdisplay
 idf.py set-target esp32
-```
-
-`set-target` 主要用于首次配置或切换芯片，不必每次构建都执行。
-
-### 2. 填写 Wi-Fi 名称和密码
-
-```sh
 idf.py menuconfig
 ```
 
-进入 **WiFi Configuration**，修改并保存：
+`set-target` 用于首次配置或切换芯片。仓库中的 `.vscode` 文件带有本机 Windows 路径，换电脑时需要重新配置 IDF、工具链和 Python 路径。
 
-| 配置项 | 填写内容 |
-| --- | --- |
-| WiFi SSID | 你自己的 2.4GHz Wi-Fi 名称，注意大小写 |
-| WiFi Password | 对应的 Wi-Fi 密码 |
-| DNS Name | 可选，设备在网络中的名称 |
+### 填写 Wi-Fi 与地点
 
-**不要跳过这一步，也不要直接使用默认占位值。** WT32-ETH01 使用的 ESP32 不支持连接 5GHz-only Wi-Fi。
+在 `WiFi Configuration` 中填写 **WiFi SSID** 和 **WiFi Password**，使用自己的 2.4GHz 网络。
 
-如果希望重新生成配置后仍保留网络信息，可以在项目根目录自行创建 `sdkconfig.wifi.local`：
+在 `Open-Meteo Weather Configuration` 中设置：
+
+```ini
+CONFIG_PLACE_NAME="成都市郫都区"
+CONFIG_LATITUDE="30.80993"
+CONFIG_LONGITUDE="103.88253"
+CONFIG_WEATHER_TIMEZONE="Asia/Shanghai"
+```
+
+`WT32-ETH01 Configuration` 中的 `POSIX timezone` 默认为 `CST-8`。修改地区时，要同时调整接口与本地时区。
+
+也可以在根目录创建本地默认配置 `sdkconfig.wifi.local`：
 
 ```ini
 CONFIG_ESP_WIFI_SSID="YOUR_2_4GHZ_WIFI_NAME"
 CONFIG_ESP_WIFI_PASSWORD="YOUR_WIFI_PASSWORD"
 ```
 
-把示例内容换成自己的网络信息。CMake 会自动加载这个文件，它已被 `.gitignore` 排除，**不要强制提交真实密码**。已有 `sdkconfig` 中的配置优先于默认值；若已经生成过 `sdkconfig`，请同时通过 `menuconfig` 更新当前 Wi-Fi 配置。
+此文件和生成的 `sdkconfig` 已被 Git 忽略。已有 `sdkconfig` 的值优先于默认配置，换网时通过 `menuconfig` 修改当前配置；真实密码不要提交到公开仓库。
 
-### 3. 设置天气地点和时区
-
-在 **Open-Meteo Weather Configuration** 中设置：
-
-| 配置项 | 默认值 | 用途 |
-| --- | --- | --- |
-| Display place name | `Pidu, Chengdu` | 屏幕上的地点名称 |
-| WGS84 latitude | `30.80993` | 纬度 |
-| WGS84 longitude | `103.88253` | 经度 |
-| Open-Meteo IANA timezone | `Asia/Shanghai` | 天气接口的时区 |
-
-默认坐标代表郫都区郫筒一带。地点名称只用于显示，**实际查询位置由经纬度决定**。屏幕目前使用英文字体，建议用英文或拼音填写地点名称。
-
-在 **WT32-ETH01 Configuration** 中，`POSIX timezone` 默认是 `CST-8`，代表北京时间 UTC+8。修改地区时，需要让这里的时区与天气接口时区保持一致。
-
-### 4. 编译
+### 构建和写入
 
 ```sh
 idf.py build
-```
-
-成功后，应用固件位于 `build/e-paper-weatherdisplay.bin`。
-
-项目采用两个各 **1.5MiB** 的 OTA 应用分区，配置见 [`partitions.csv`](partitions.csv)。第一次使用本项目或变更分区表后，应完整烧录 bootloader、分区表和应用，不能只通过旧固件的 OTA 更新应用。
-
-### 5. 烧录并查看日志
-
-USB 转串口模块与板卡的**烧录串口 UART0**连接：TX 接板卡 RXD，RX 接板卡 TXD，GND 共地，串口逻辑电平使用 3.3V。不要误接前面用于屏幕时钟的 GPIO17。
-
-若没有自动下载电路，将 IO0 接 GND 后复位或重新上电，使芯片进入下载模式，再运行：
-
-```sh
 idf.py -p COMx flash
-```
-
-把 `COMx` 换成实际串口。烧录完成后断开 IO0 与 GND 的连接并复位，随后查看日志：
-
-```sh
 idf.py -p COMx monitor
 ```
 
-退出串口监视器使用 `Ctrl+]`。具备正常自动下载、复位条件时，也可以使用 `idf.py -p COMx flash monitor`。
+把 `COMx` 换成实际串口。USB 转串口 TX 接板卡烧录 RXD，RX 接烧录 TXD，GND 共地。没有自动下载电路时，将 IO0 接 GND 后复位进入下载模式；烧录完成后断开 IO0 与 GND，再复位运行。退出监视器用 `Ctrl+]`。
 
-## 使用说明
+固件生成在 `build/e-paper-weatherdisplay.bin`。工程采用两个各 1.5MiB 的 OTA 应用分区，第一次使用或更换分区表时完整烧录 bootloader、分区表和应用。当前中文四色版本大小为 `0x106280` 字节，应用分区剩余 32%。
 
-设备启动后连接 Wi-Fi，同步时间，获取天气并刷新墨水屏，随后进入深度睡眠。
+## 运行与显示
 
-默认按北京时间 **07:00–22:50 每 10 分钟**安排一次更新，晚间等待到次日 07:00。首次上电也会尝试更新；Wi-Fi 连接失败时约 3 小时后重试。计划时间位于 `main/main.c` 的 `update_times` 数组。
+上电后依次连接 Wi-Fi、校时、请求天气、停止 Wi-Fi、刷新屏幕，最后进入深度睡眠。
 
-- `Data`：接口返回的当前天气数据时间。
-- `Precip today (max)`：当天最大小时降水概率，**不是当前时刻的降水概率**；缺失时显示 `N/A`。
-- 风速以 km/h 显示，气压以 hPa 显示。
-- 天气请求失败时不清除旧画面，可从串口日志查看原因。
+- 黄色用于太阳和月亮，红色用于预报最高温，黑色用于最低温与正文。
+- 当天最高降水概率达到 50% 时提示栏为红色，否则为黄色。
+- 默认北京时间 **07:00–22:50 每 10 分钟**更新，夜间等待到次日 07:00。
+- Wi-Fi 连接失败后约 3 小时重试。刷新计划在 `main/main.c` 的 `update_times` 数组中。
 
-### 可选 OTA 升级
+墨水屏没有背光，观察是否正常要看内容有没有变化。串口中的 `Image transfer` 是 SPI 发送图像耗时，`full refresh: ready HIGH after ... ms` 是屏幕刷新时等待 BUSY 的耗时。
 
-默认关闭 OTA 按键。需要使用时：
+### 单屏诊断
 
-1. 将按键接在 **GPIO39 与 GND** 之间，并从 GPIO39 接 **10kΩ 电阻到 3V3**。GPIO39 没有内部上拉。
-2. 在 `WT32-ETH01 Configuration` 中启用 `Enable OTA button`。
-3. 在 `WiFi Configuration` 中填写自己的 `OTA URL`，指向局域网服务器上的应用固件 `.bin`。
-4. 在设备启动并完成 Wi-Fi 连接前保持按键按下，程序会尝试下载更新。
+遇到空白屏时，在 `menuconfig → WT32-ETH01 Configuration` 打开 `Screen-only diagnostic (no Wi-Fi, SPI 100 kHz)`，重新编译烧录。
 
-GPIO4 已用于屏幕 CS，不能再按原工程接作升级按键。OTA 沿用 HTTP 更新流程，尚未进行实机验证；初次烧录请使用串口。
+诊断模式跳过联网，显示文字和黑、白、黄、红色带，不进入 ESP32 深度睡眠。失败后保留 60 秒电压测量窗口，随后将 RST 拉低。诊断结束后关闭该选项，再次编译烧录恢复天气模式。
 
-## 常见问题
+`BUSY remained ...` 或 `ESP_ERR_TIMEOUT` 表示初始化或刷新未完成，应检查完整屏幕型号、BUSY 极性、接线和供电。仅凭 Wi-Fi 连接和天气请求成功，还不能判断屏幕驱动正常。
 
-**编译成功，但 VS Code 中头文件出现红线？**
+### 中文字体与界面
 
-`C/C++(1696)` 一般来自编辑器 IntelliSense。检查 ESP32 GCC 路径，并确认 `build/compile_commands.json` 和 `build/config/sdkconfig.h` 存在。必要时运行 `idf.py reconfigure`，再执行 `Developer: Reload Window` 或 `C/C++: Reset IntelliSense Database`。开发期间保留构建目录，删除后需要重新生成。
+中文字体已随源码提供，正常编译不需要额外下载。自定义地点出现 `?` 时，将缺失字符加入 `main/fonts/characters.txt`，使用 [Noto Sans SC 可变字体](https://github.com/google/fonts/tree/main/ofl/notosanssc) 重新生成：
 
-**Wi-Fi 一直连接失败？**
+```sh
+python -m pip install Pillow
+python tools/generate_weather_fonts.py --font path/to/NotoSansSC.ttf
+idf.py build
+```
 
-检查是否已填写自己的 SSID 和密码、是否连接 2.4GHz 网络，以及当前 `sdkconfig` 是否仍使用旧值。再通过串口日志检查连接过程。
+布局位于 `main/weather_ui.c`，四色绘图在 `main/color_canvas.c`。`tools/preview_weather_ui.py` 可用本机 GCC 和 ESP-IDF 源码生成像素预览，具体参数见脚本说明。
 
-**天气请求失败或画面没有变化？**
+OTA 按键默认关闭；需要启用时，将 GPIO39 外接 10kΩ 上拉至 3V3，按键接 GPIO39 与 GND，并配置自己的固件 URL。OTA 尚未实机验证。
 
-先确认网络能访问 Open-Meteo，且时间同步成功；HTTPS 证书校验需要正确时间。接口失败时保留旧画面是预期行为。若数据请求成功但屏幕不刷新，再检查屏幕型号、接线、BUSY 信号和供电。
+## 记录与许可
 
-**为什么接了网线也不能获取天气？**
-
-当前固件仅初始化 Wi-Fi，板卡具备 RJ45 接口不代表程序已经启用以太网。
-
-## 数据来源与许可
-
-天气数据来自 [Open-Meteo](https://open-meteo.com/)，使用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 授权。本项目对数据进行了单位转换、舍入和图标映射，屏幕保留 `Weather: Open-Meteo.com` 来源标注。
-
-免费接口适用于非商业用途；商业使用请查看 [Open-Meteo 服务方案](https://open-meteo.com/en/pricing)。接口字段说明见 [官方文档](https://open-meteo.com/en/docs)。
-
-项目代码许可证见 [LICENSE](LICENSE)。图标源自 [Weather Icons](https://github.com/erikflowers/weather-icons)，字体源自 [Ubuntu Font](https://design.ubuntu.com/font)，相应资源遵循各自许可证。
+- 复刻日志：[Ecoli ESP32 项目记录](https://noregrets42619.github.io/weather/porting-log/)。
+- 本机适配记录：[README_WT32-ETH01.md](README_WT32-ETH01.md)。
+- 原项目代码采用 [MIT License](LICENSE)，保留原作者许可。
+- 天气数据来自 [Open-Meteo](https://open-meteo.com/)，按 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 提供；界面保留来源文字。
+- WeatherSans 位图字体由 Noto Sans SC 生成，许可见 [SIL OFL 1.1](main/fonts/OFL.txt)。诊断模式保留的 Ubuntu 字体、原工程资源分别遵循其原许可。

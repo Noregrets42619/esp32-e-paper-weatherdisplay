@@ -27,6 +27,7 @@
 
 #include "epdif.h"
 #include <assert.h>
+#include "sdkconfig.h"
 
 spi_device_handle_t spi;
 #include "esp_log.h"
@@ -113,7 +114,7 @@ int ifinit(void)
         ESP_LOGE("EPDIF", "INVALID NO MEMORY");
         break;
     case ESP_OK:
-        ESP_LOGE("EPDIF", "All OK");
+        ESP_LOGI("EPDIF", "SPI bus initialized");
     }
     assert(ret == ESP_OK);
 
@@ -121,7 +122,8 @@ int ifinit(void)
         .command_bits = 0,
         .address_bits = 0,
         .dummy_bits = 0,
-        .clock_speed_hz = 2 * 1000 * 1000,
+        // Keep the 100 kHz rate validated on this WT32-ETH01 + G panel.
+        .clock_speed_hz = 100 * 1000,
         .mode = 0,
         .spics_io_num = CS_PIN,
         .queue_size = 1
@@ -130,6 +132,8 @@ int ifinit(void)
     //Attach the EPD to the SPI bus
     ret = spi_bus_add_device(SPI2_HOST, &devcfg, &spi);
     assert(ret == ESP_OK);
+    ESP_LOGI("EPDIF", "SPI clock %d Hz; DIN=%d CLK=%d CS=%d DC=%d RST=%d BUSY=%d",
+             devcfg.clock_speed_hz, MOSI_PIN, CLK_PIN, CS_PIN, DC_PIN, RST_PIN, BUSY_PIN);
 
     return 0;
 }

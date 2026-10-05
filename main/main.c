@@ -17,23 +17,17 @@
 
 
 #include "weather.h"
-#include <math.h>
+#include "weather_ui.h"
 
-#include "epd4in2b.h"
+#include "epd4in2g.h"
+#include "epdif.h"
 
+#if CONFIG_EPD_DIAGNOSTIC_MODE
 #include "epdpaint.h"
-
-#include "icons.h"
-
-#include "ubuntu10.h"
 #include "ubuntu12.h"
 #include "ubuntu14.h"
-#include "ubuntu16.h"
-#include "ubuntu18.h"
-#include "ubuntu20.h"
-#include "ubuntu22.h"
 #include "ubuntu24.h"
-#include "ubuntu8.h"
+#endif
 
 #include "ota.h"
 
@@ -166,171 +160,26 @@ static bool obtain_time(void)
 
 static void weather_to_display(void)
 {
-    static const char* TAG = "weather_to_display_task";
-
-    time_t now;
-    struct tm timeinfo = {0};
-
-    char tmp_buff[80];
-
-    if (epd4in2b_init() != 0) {
-        ESP_LOGE(TAG, "e-Paper init failed");
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    static const char *TAG = "weather_to_display_task";
+    uint8_t *frame = malloc(EPD_COLOR_FRAME_BYTES);
+    if (frame == NULL) {
+        ESP_LOGE(TAG, "Cannot allocate color display buffer");
         return;
     }
-    ESP_LOGI(TAG, "e-Paper initialized");
-
-    clear_frame();
-
-    unsigned char* frame_black = (unsigned char*)malloc(400 * 300 / 8);
-
-    if (frame_black == NULL) {
-        ESP_LOGE(TAG, "Cannot allocate display buffer");
-        return;
-    }
-
-    paint(frame_black, 400, 300);
-
-    clear(UNCOLORED);
-
-    // Current weather
-    const tImage* image = NULL;
-
-    if (strcmp(weather.icon, "clear-day") == 0) {
-        image = &widaysunny;
-    } else if (strcmp(weather.icon, "clear-night") == 0) {
-        image = &winightclear;
-    } else if (strcmp(weather.icon, "rain") == 0) {
-        image = &wirain;
-    } else if (strcmp(weather.icon, "snow") == 0) {
-        image = &wisnow;
-    } else if (strcmp(weather.icon, "sleet") == 0) {
-        image = &wisleet;
-    } else if (strcmp(weather.icon, "wind") == 0) {
-        image = &wistrongwind;
-    } else if (strcmp(weather.icon, "fog") == 0) {
-        image = &wifog;
-    } else if (strcmp(weather.icon, "cloudy") == 0) {
-        image = &wicloudy;
-    } else if (strcmp(weather.icon, "partly-cloudy-day") == 0) {
-        image = &widaycloudy;
-    } else if (strcmp(weather.icon, "partly-cloudy-night") == 0) {
-        image = &winightaltcloudy;
-    }
-
-    if (image != NULL) {
-        draw_bitmap_mono_in_center(2, 0, 500, 40, image);
-    }
-
-    sprintf(tmp_buff, "%0.1f C", weather.temperature);
-    draw_string_in_grid_align_center(3, 0, 400, 45, tmp_buff, &Ubuntu24);
-
-    draw_string_in_grid_align_center(2, 1, 400, 65, weather.summary, &Ubuntu12);
-
-    sprintf(tmp_buff, "Humidity: %d%%", (int)(weather.humidity * 100));
-    draw_string_in_grid_align_center(2, 1, 400, 85, tmp_buff, &Ubuntu12);
-
-    sprintf(tmp_buff, "Pressure:%d hPa", weather.pressure);
-    draw_string_in_grid_align_center(2, 1, 400, 105, tmp_buff, &Ubuntu12);
-
-    sprintf(tmp_buff, "Wind :%d km/h (%s)", (int)round(weather.wind_speed * 3.6), deg_to_compass(weather.wind_bearing));
-    draw_string_in_grid_align_center(2, 1, 400, 125, tmp_buff, &Ubuntu12);
-
-    if (isfinite(weather.precip_probability)) {
-        snprintf(tmp_buff, sizeof(tmp_buff), "Precip today (max): %d%%", (int)round(weather.precip_probability * 100));
-    } else {
-        snprintf(tmp_buff, sizeof(tmp_buff), "Precip today (max): N/A");
-    }
-    draw_string_in_grid_align_center(2, 1, 400, 145, tmp_buff, &Ubuntu12);
-
-    for (size_t i = 0; i < WEATHER_FORECAST_DAYS; i++) {
-        struct tm timeinfo = {0};
-        setenv("TZ", CONFIG_DISPLAY_TIMEZONE, 1);
-        tzset();
-        localtime_r(&weather.forecasts[i].time, &timeinfo);
-        char day[20];
-        char date[20];
-        strftime(date, sizeof(date), "%d - %m", &timeinfo);
-        strftime(day, sizeof(date), "%A", &timeinfo);
-
-        if (i == 0) {
-            sprintf(day, "Today");
-        }
-
-        if (i == 1) {
-            sprintf(day, "Tomorrow");
-        }
-
-        draw_string_in_grid_align_center(7, i, 400, 210, day, &Ubuntu10);
-
-        draw_string_in_grid_align_center(7, i, 400, 225, date, &Ubuntu10);
-
-        sprintf(tmp_buff, "%d - %d C", (int)round(weather.forecasts[i].temperatureMin), (int)round(weather.forecasts[i].temperatureMax));
-        draw_string_in_grid_align_center(7, i, 400, 240, tmp_buff, &Ubuntu10);
-
-        const tImage* forecast_image = NULL;
-
-        if (strcmp(weather.forecasts[i].icon, "clear-day") == 0) {
-            forecast_image = &daysunny;
-        } else if (strcmp(weather.forecasts[i].icon, "clear-night") == 0) {
-            forecast_image = &nightclear;
-        } else if (strcmp(weather.forecasts[i].icon, "rain") == 0) {
-            forecast_image = &rain;
-        } else if (strcmp(weather.forecasts[i].icon, "snow") == 0) {
-            forecast_image = &snow;
-        } else if (strcmp(weather.forecasts[i].icon, "sleet") == 0) {
-            forecast_image = &sleet;
-        } else if (strcmp(weather.forecasts[i].icon, "wind") == 0) {
-            forecast_image = &strongwind;
-        } else if (strcmp(weather.forecasts[i].icon, "fog") == 0) {
-            forecast_image = &fog;
-        } else if (strcmp(weather.forecasts[i].icon, "cloudy") == 0) {
-            forecast_image = &cloudy;
-        } else if (strcmp(weather.forecasts[i].icon, "partly-cloudy-day") == 0) {
-            forecast_image = &daycloudy;
-        } else if (strcmp(weather.forecasts[i].icon, "partly-cloudy-night") == 0) {
-            forecast_image = &nightaltcloudy;
-        }
-
-        if (forecast_image != NULL) {
-            draw_bitmap_mono_in_center(7, i, 400, 255, forecast_image);
-        }
-    }
-
-    draw_string_in_grid_align_left(1, 0, 2, 400, 0, CONFIG_PLACE_NAME, &Ubuntu12);
-
-    now = weather.observed_at;
-    char strftime_buf[64];
-    // Use the configured local timezone.
     setenv("TZ", CONFIG_DISPLAY_TIMEZONE, 1);
     tzset();
-    localtime_r(&now, &timeinfo);
-    strftime(strftime_buf, sizeof(strftime_buf), "Data: %d/%m %H:%M", &timeinfo);
-
-    draw_string_in_grid_align_right(1, 0, 2, 400, 0, strftime_buf, &Ubuntu12);
-
-    draw_string_in_grid_align_left(1, 0, 4, 400, 180,
-        "Weather: Open-Meteo.com", &Ubuntu8);
-
-    draw_horizontal_line(0, 14, 400, COLORED);
-    draw_horizontal_line(0, 200, 400, COLORED);
-    draw_horizontal_line(0, 0, 400, COLORED);
-    draw_vertical_line(0, 0, 300, COLORED);
-    draw_horizontal_line(0, 299, 400, COLORED);
-    draw_vertical_line(399, 0, 300, COLORED);
-
-    for (size_t i = 1; i < 7; i++) {
-        draw_vertical_line((400 / 7 * i), 200, 138, COLORED);
+    weather_ui_render(frame, &weather, CONFIG_PLACE_NAME);
+    esp_err_t err = epd4in2g_init();
+    if (err == ESP_OK) err = epd4in2g_display_color(frame);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Chinese four-color weather image refreshed");
+        err = epd4in2g_sleep();
+        if (err != ESP_OK) ESP_LOGE(TAG, "e-Paper G power off failed: %s", esp_err_to_name(err));
+    } else {
+        ESP_LOGE(TAG, "e-Paper G init/refresh failed: %s", esp_err_to_name(err));
     }
-
-    // /* Display the frame buffer */
-    display_frame(NULL, frame_black);
-
-    epd4in2_sleep();
-
-    free(frame_black);
+    free(frame);
 }
-
 static void update_time_using_ntp(void)
 {
     static const char* TAG = "update_time_using_ntp_task";
@@ -359,10 +208,68 @@ static void update_time_using_ntp(void)
     esp_sntp_stop();
 }
 
+#if CONFIG_EPD_DIAGNOSTIC_MODE
+static void screen_diagnostic(void)
+{
+    static const char *TAG = "screen_diagnostic";
+    ESP_LOGW(TAG, "SCREEN-ONLY G TEST: Wi-Fi/weather disabled, SPI 100 kHz, no ESP32 deep sleep");
+    esp_err_t err = epd4in2g_init();
+    if (err == ESP_OK) {
+        uint8_t *frame = malloc(EPD_FRAME_BYTES);
+        uint8_t *color = malloc(EPD_COLOR_FRAME_BYTES);
+        if (frame == NULL || color == NULL) {
+            err = ESP_ERR_NO_MEM;
+        } else {
+            paint(frame, EPD_WIDTH, EPD_HEIGHT);
+            clear(UNCOLORED);
+            draw_rectangle(0, 0, EPD_WIDTH - 1, EPD_HEIGHT - 1, COLORED);
+            draw_string("4.2 G COLOR TEST", 30, 35, &Ubuntu24);
+            draw_string("SPI 100 kHz / Wi-Fi OFF", 45, 80, &Ubuntu14);
+            draw_string("BLACK   WHITE   YELLOW   RED", 30, 115, &Ubuntu12);
+            epd4in2g_convert_mono(frame, color);
+            for (int y = 150; y < 280; ++y) {
+                for (int x_byte = 0; x_byte < EPD_WIDTH / 4; ++x_byte) {
+                    unsigned int color_code = x_byte / (EPD_WIDTH / 16);
+                    color[y * (EPD_WIDTH / 4) + x_byte] = color_code * 0x55;
+                }
+            }
+            err = epd4in2g_display_color(color);
+        }
+        free(color);
+        free(frame);
+    }
+
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Test refresh completed. Expect text and BLACK / WHITE / YELLOW / RED bars.");
+        err = epd4in2g_sleep();
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Panel sleep command sent; ESP32 stays awake. Disable diagnostic mode to restore weather.");
+            return;
+        }
+    }
+
+    ESP_LOGE(TAG, "Test failed: %s. Measure panel VCC/RST/BUSY now; outputs remain unchanged for 60s.",
+             esp_err_to_name(err));
+    for (int seconds = 60; seconds > 0; seconds -= 10) {
+        ESP_LOGI(TAG, "Measurement window: %ds left, BUSY=%d, RST commanded HIGH",
+                 seconds, digital_read(BUSY_PIN));
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+    digital_write(RST_PIN, 0);
+    ESP_LOGW(TAG, "Test stopped: RST now deliberately held LOW. Power off before changing hardware.");
+}
+#endif
+
 void app_main(void)
 {
     static const char* TAG = "app_main";
 
+#if CONFIG_EPD_DIAGNOSTIC_MODE
+    screen_diagnostic();
+    return;
+#endif
+
+    ESP_LOGI(TAG, "Chinese color weather: %s, Open-Meteo, 4.2-inch G panel", CONFIG_PLACE_NAME);
     ++boot_count;
     ESP_LOGI(TAG, "Boot count: %d", boot_count);
 

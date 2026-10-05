@@ -26,6 +26,15 @@ config OTA_URL
 	URL for getting the bin file over the air using http.
 endmenu
 menu "WT32-ETH01 Configuration"
+config EPD_DIAGNOSTIC_MODE
+    bool "Screen-only diagnostic (no Wi-Fi, SPI 100 kHz)"
+    default n
+    help
+        Initialize the 4.2-inch G panel and display four color bars once.
+        Skip Wi-Fi, weather and ESP32 deep sleep. On failure, allow 60 seconds
+        for voltage measurements, then hold panel reset LOW and stop.
+        Disable this option to restore the weather display.
+
 config ENABLE_OTA_BUTTON
     bool "Enable OTA button on GPIO39 (external 10k pull-up required)"
     default n
